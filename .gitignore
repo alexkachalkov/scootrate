@@ -8,6 +8,7 @@ venv/
 .env
 .env.*
 backend/venv/
+data/
 
 # Flask
 instance/
@@ -26,4 +27,3 @@ vite.svg
 .vscode/
 .idea/
 *.swp
-

@@ -30,6 +30,15 @@ python app.py
 
 Бэкенд будет доступен по адресу: http://localhost:5000
 
+### Запуск через gunicorn (как на Heroku)
+
+```bash
+cd backend
+source venv/bin/activate
+pip install -r requirements.txt
+gunicorn app:app --chdir backend
+```
+
 ## Запуск фронтенда
 
 ```bash
@@ -39,3 +48,21 @@ npm run dev
 ```
 
 Фронтенд будет доступен по адресу: http://localhost:3000
+
+## Деплой на Heroku
+
+В корне проекта добавлены файлы для Python buildpack:
+
+- `requirements.txt` — проксирует зависимости из `backend/requirements.txt`.
+- `runtime.txt` — фиксирует версию Python (3.12.3).
+- `Procfile` — указывает команду запуска `web: gunicorn backend.app:app`.
+
+Пошагово:
+
+```bash
+heroku create your-app-name
+heroku stack:set heroku-24
+git push heroku main
+```
+
+Не забудьте настроить переменные окружения (`TOPSCOOT_SECRET`, `TOPSCOOT_DATABASE` и т.д.) через `heroku config:set`.
