@@ -1,0 +1,2 @@
+tournament_name,tournament_date,tournament_city,tournament_level,participants_count,tournament_style,place,is_finalist,is_participant,rider_nick,rider_fullname,rider_city,rider_birthdate(YYYY-MM-DD),rider_style,rider_level_override(optional)
+Sample Jam,2025-05-01,Moscow,local,24,street,1,false,false,rider123,Alex Rider,Moscow,2005-07-14,street,
