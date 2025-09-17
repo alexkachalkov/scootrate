@@ -19,6 +19,7 @@ frontend/node_modules/
 # Vite build output (keep frontend/dist in repo)
 dist/
 !frontend/dist/
+!data/
 *.log
 
 # Vite
