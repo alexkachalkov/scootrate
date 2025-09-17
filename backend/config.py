@@ -22,6 +22,7 @@ class Config:
     SESSION_COOKIE_SAMESITE = "Lax"
 
     DATABASE_PATH = Path(os.environ.get("TOPSCOOT_DATABASE", DEFAULT_DB_PATH))
+    DATABASE_READONLY = os.environ.get("TOPSCOOT_DATABASE_READONLY", "0") in {"1", "true", "True"}
     CORS_ORIGINS = os.environ.get("TOPSCOOT_CORS_ORIGINS", DEFAULT_CORS)
     JSON_SORT_KEYS = False
 

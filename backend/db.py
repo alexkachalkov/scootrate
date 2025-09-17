@@ -16,8 +16,17 @@ def init_app(app: Flask) -> None:
 def get_db() -> sqlite3.Connection:
     if "db" not in g:
         database_path = Path(current_app.config["DATABASE_PATH"])
-        database_path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(database_path)
+        readonly = bool(current_app.config.get("DATABASE_READONLY"))
+
+        if not readonly:
+            database_path.parent.mkdir(parents=True, exist_ok=True)
+            conn = sqlite3.connect(database_path)
+        else:
+            if not database_path.exists():
+                raise FileNotFoundError(f"SQLite database not found: {database_path}")
+            uri = f"file:{database_path}?mode=ro"
+            conn = sqlite3.connect(uri, uri=True)
+
         conn.row_factory = sqlite3.Row
         g.db = conn
     return g.db  # type: ignore[return-value]

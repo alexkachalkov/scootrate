@@ -65,4 +65,13 @@ heroku stack:set heroku-24
 git push heroku main
 ```
 
-Не забудьте настроить переменные окружения (`TOPSCOOT_SECRET`, `TOPSCOOT_DATABASE` и т.д.) через `heroku config:set`.
+Не забудьте настроить переменные окружения через `heroku config:set`, например:
+
+```bash
+heroku config:set \
+  TOPSCOOT_SECRET=... \
+  TOPSCOOT_DATABASE=data/top-scoot.sqlite3 \
+  TOPSCOOT_DATABASE_READONLY=1
+```
+
+`TOPSCOOT_DATABASE_READONLY=1` сообщает приложению, что база лежит в read-only slug, и оно открывает SQLite в режиме `mode=ro`.
