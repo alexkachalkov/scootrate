@@ -39,7 +39,7 @@ config_by_name = {
     "production": ProductionConfig,
     "default": Config,
 }
-
+ 
 
 def get_config(config_name: str | None = None) -> type[Config]:
     if not config_name:
