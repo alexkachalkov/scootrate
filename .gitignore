@@ -16,7 +16,9 @@ instance/
 # Node / Vue
 node_modules/
 frontend/node_modules/
+# Vite build output (keep frontend/dist in repo)
 dist/
+!frontend/dist/
 *.log
 
 # Vite
