@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import logging
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -10,7 +11,28 @@ from dotenv import load_dotenv
 load_dotenv()
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-DEFAULT_DB_PATH = ROOT_DIR / "data" / "top-scoot.sqlite3"
+
+# Check if running on Heroku (DYNO environment variable is set)
+if 'DYNO' in os.environ:
+    # On Heroku, use cwd as root for proper path resolution
+    DEFAULT_DB_PATH = Path.cwd() / "data" / "top-scoot.sqlite3"
+else:
+    # Local development
+    DEFAULT_DB_PATH = ROOT_DIR / "data" / "top-scoot.sqlite3"
+
+
+def validate_database_config(db_path: Path) -> None:
+    """Validate database configuration and log relevant information."""
+    logging.info(f"Database path set to: {db_path}")
+    logging.info(f"Database file exists: {db_path.exists()}")
+    if not db_path.exists():
+        logging.warning("Database file not found at the specified path!")
+        # Also log the parent directory contents for debugging
+        parent_dir = db_path.parent
+        if parent_dir.exists():
+            logging.info(f"Contents of database directory ({parent_dir}): {list(parent_dir.iterdir())}")
+        else:
+            logging.warning(f"Database directory does not exist: {parent_dir}")
 DEFAULT_CORS = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000"
 
 

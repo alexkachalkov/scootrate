@@ -8,9 +8,14 @@ from typing import Any
 
 from flask import Flask, current_app, g
 
+from config import validate_database_config
+
 
 def init_app(app: Flask) -> None:
     app.teardown_appcontext(close_db)
+    # Validate database configuration on app initialization
+    database_path = Path(app.config["DATABASE_PATH"])
+    validate_database_config(database_path)
 
 
 def get_db() -> sqlite3.Connection:
