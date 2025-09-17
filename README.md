@@ -75,3 +75,4 @@ heroku config:set \
 ```
 
 `TOPSCOOT_DATABASE_READONLY=1` сообщает приложению, что база лежит в read-only slug, и оно открывает SQLite в режиме `mode=ro`.
+
