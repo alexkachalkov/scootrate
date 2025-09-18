@@ -9,7 +9,7 @@ COPY frontend/ .
 RUN npm run build
 
 # Stage 2: Backend and serve frontend
-FROM python:3.12.3-slim
+FROM python:3.12.3-slim AS production
 
 WORKDIR /app
 
