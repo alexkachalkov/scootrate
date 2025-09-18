@@ -74,5 +74,5 @@ heroku config:set \
   TOPSCOOT_DATABASE_READONLY=1
 ```
 
-`TOPSCOOT_DATABASE_READONLY=1` сообщает приложению, что база лежит в read-only slug, и оно открывает SQLite в режиме `mode=ro`.
+`TOPSCOOT_DATABASE` можно задавать относительным путём от корня проекта (например, `data/top-scoot.sqlite3`) — внутри приложения он преобразуется в абсолютный. Флаг `TOPSCOOT_DATABASE_READONLY=1` сообщает приложению, что база лежит в read-only slug, и оно открывает SQLite в режиме `mode=ro`.
 
