@@ -7,6 +7,7 @@ import argparse
 import mysql.connector
 from pathlib import Path
 import os
+import re
 
 BASE_DIR = Path(__file__).resolve().parent
 ROOT_DIR = BASE_DIR.parent
@@ -48,14 +49,20 @@ def convert_sqlite_to_mariadb(sql: str) -> str:
     """Convert SQLite syntax to MariaDB syntax."""
     # Replace SQLite-specific syntax with MariaDB equivalents
     sql = sql.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "INT AUTO_INCREMENT PRIMARY KEY")
+    sql = re.sub(r"TEXT(\s+COLLATE\s+NOCASE)", r"VARCHAR(255)", sql)
     sql = sql.replace("TEXT", "TEXT")
     sql = sql.replace("DEFAULT (datetime('now'))", "DEFAULT CURRENT_TIMESTAMP")
     sql = sql.replace("PRAGMA foreign_keys = ON;", "")
     sql = sql.replace("BEGIN TRANSACTION;", "START TRANSACTION;")
     sql = sql.replace("COMMIT;", "")
     
-    # Remove SQLite-specific CHECK constraints if needed
-    # This is a simplified conversion - you may need to adjust based on your specific needs
+    # Handle CHECK constraints properly
+    sql = re.sub(r"CHECK\s*\(\s*([a-zA-Z_][a-zA-Z0-9_]*)\s+IN\s*\(\s*'[^']*'(?:\s*,\s*'[^']*')*\s*\)\s*\)", 
+                 lambda m: m.group(0).replace(")", ")"), sql)
+    
+    # Remove COLLATE NOCASE as it's not needed in the same way in MariaDB
+    sql = sql.replace(" COLLATE NOCASE", "")
+    
     return sql
 
 def apply_migration(conn: mysql.connector.connection.MySQLConnection, path: Path) -> None:
@@ -65,12 +72,22 @@ def apply_migration(conn: mysql.connector.connection.MySQLConnection, path: Path
     sql = path.read_text(encoding="utf-8")
     converted_sql = convert_sqlite_to_mariadb(sql)
     
-    # Execute each statement separately
+    # Split into statements
     statements = [stmt.strip() for stmt in converted_sql.split(";") if stmt.strip()]
     for statement in statements:
+        statement = statement.strip()
+        if not statement:
+            continue
         if statement.upper().startswith("START TRANSACTION") or statement.upper().startswith("COMMIT"):
             continue
-        cursor.execute(statement)
+        if statement.upper().startswith("PRAGMA"):
+            continue
+        try:
+            cursor.execute(statement)
+        except mysql.connector.Error as e:
+            print(f"Error executing statement: {statement[:100]}...")
+            print(f"Error: {e}")
+            raise
     
     # Record the migration
     cursor.execute("INSERT INTO schema_migrations (filename) VALUES (%s)", (path.name,))
@@ -86,7 +103,12 @@ def run_migrations() -> None:
         ensure_schema_table(conn)
         already_applied = applied_migrations(conn)
 
-        for path in sorted(MIGRATIONS_DIR.glob("*.sql")):
+        # Look for MariaDB-specific migrations first, fallback to generic ones
+        migration_files = sorted(MIGRATIONS_DIR.glob("*_mariadb.sql"))
+        if not migration_files:
+            migration_files = sorted(MIGRATIONS_DIR.glob("*.sql"))
+            
+        for path in migration_files:
             if path.name in already_applied:
                 print(f"Migration {path.name} already applied, skipping")
                 continue
