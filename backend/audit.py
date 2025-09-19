@@ -7,7 +7,7 @@ from typing import Any
 
 from flask import g
 
-from db import get_db
+from backend.db import get_db
 
 
 def record_audit(entity: str, entity_id: int | None, action: str, payload: dict[str, Any] | None = None) -> None:

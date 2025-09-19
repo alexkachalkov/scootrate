@@ -5,7 +5,7 @@ from __future__ import annotations
 import mysql.connector
 from typing import Any
 from flask import Flask, current_app, g
-from config import validate_database_config
+from backend.config import validate_database_config
 
 def init_app(app: Flask) -> None:
     app.teardown_appcontext(close_db)

@@ -5,18 +5,18 @@ from pathlib import Path
 from flask import Flask, abort, send_from_directory
 from flask_cors import CORS
 
-from config import get_config
+from backend.config import get_config
 # Импортируем правильный модуль базы данных в зависимости от конфигурации
 import os
 
 # Определяем, какую систему баз данных использовать
 if os.environ.get("USE_MARIADB", "false").lower() == "true":
-    from db_mariadb import init_app as init_db
+    from backend.db_mariadb import init_app as init_db
 else:
-    from db import init_app as init_db
+    from backend.db import init_app as init_db
 
-from routes.public import bp as public_bp
-from routes.admin import bp as admin_bp
+from backend.routes.public import bp as public_bp
+from backend.routes.admin import bp as admin_bp
 
 BACKEND_DIR = Path(__file__).resolve().parent
 FRONTEND_DIST = BACKEND_DIR.parent / "frontend" / "dist"

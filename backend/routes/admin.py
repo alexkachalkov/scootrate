@@ -7,7 +7,7 @@ from typing import Any
 
 from flask import Blueprint, jsonify, request, g
 
-from auth import (
+from backend.auth import (
     clear_current_user,
     fetch_user_by_email,
     get_current_user,
@@ -16,9 +16,9 @@ from auth import (
     touch_last_login,
     verify_password,
 )
-from db import get_db
-from season import recalculate_season_points
-from audit import record_audit
+from backend.db import get_db
+from backend.season import recalculate_season_points
+from backend.audit import record_audit
 
 bp = Blueprint("admin", __name__, url_prefix="/api/admin")
 

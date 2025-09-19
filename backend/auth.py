@@ -8,7 +8,7 @@ from typing import Any, Callable, TypeVar
 import bcrypt
 from flask import Response, current_app, g, jsonify, session
 
-from db import get_db
+from backend.db import get_db
 
 F = TypeVar("F", bound=Callable[..., Response | tuple[Any, int] | tuple[Any, int, dict[str, Any]]])
 
