@@ -4,14 +4,20 @@
 from __future__ import annotations
 
 import os
-import sqlite3
+import mysql.connector
 from pathlib import Path
 
 import bcrypt
 
-BASE_DIR = Path(__file__).resolve().parent
-ROOT_DIR = BASE_DIR.parent
-DB_PATH = ROOT_DIR / "data" / "top-scoot.sqlite3"
+# Get database connection parameters from environment
+db_config = {
+    'host': os.environ.get("DB_HOST", "scootrate-mariadb-wmclth"),
+    'port': int(os.environ.get("DB_PORT", 3306)),
+    'user': os.environ.get("DB_USER", "scootrate"),
+    'password': os.environ.get("DB_PASSWORD", "secret"),
+    'database': os.environ.get("DB_NAME", "scootrate"),
+    'charset': 'utf8mb4'
+}
 
 DEFAULT_USERS = [
     {
@@ -32,32 +38,38 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
 
-def seed_users(db_path: Path) -> list[str]:
+def seed_users() -> list[str]:
     created: list[str] = []
-
-    with sqlite3.connect(db_path) as conn:
-        conn.execute("PRAGMA foreign_keys = ON;")
+    
+    conn = mysql.connector.connect(**db_config)
+    try:
+        cursor = conn.cursor()
+        
         for user in DEFAULT_USERS:
             email = user["email"]
-            cur = conn.execute("SELECT id FROM users WHERE email = ?", (email,))
-            if cur.fetchone():
+            cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+            if cursor.fetchone():
                 continue
             password_hash = hash_password(user["password"])
-            conn.execute(
+            cursor.execute(
                 """
                 INSERT INTO users (email, password_hash, role)
-                VALUES (?, ?, ?)
+                VALUES (%s, %s, %s)
                 """,
                 (email, password_hash, user["role"]),
             )
             conn.commit()
             created.append(email)
+            
+        cursor.close()
+    finally:
+        conn.close()
+        
     return created
 
 
 def main() -> None:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    created = seed_users(DB_PATH)
+    created = seed_users()
     if created:
         for email in created:
             print(f"Created user {email}")
