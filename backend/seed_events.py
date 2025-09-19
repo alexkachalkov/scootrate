@@ -5,12 +5,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, timedelta
-import sqlite3
+import os
+import mysql.connector
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent
-ROOT_DIR = BASE_DIR.parent
-DB_PATH = ROOT_DIR / "data" / "top-scoot.sqlite3"
+# Get database connection parameters from environment
+db_config = {
+    'host': os.environ.get("DB_HOST", "scootrate-mariadb-wmclth"),
+    'port': int(os.environ.get("DB_PORT", 3306)),
+    'user': os.environ.get("DB_USER", "scootrate"),
+    'password': os.environ.get("DB_PASSWORD", "secret"),
+    'database': os.environ.get("DB_NAME", "scootrate"),
+    'charset': 'utf8mb4'
+}
 
 
 @dataclass
@@ -110,25 +117,28 @@ SEEDS: list[EventSeed] = [
 ]
 
 
-def insert_event(conn: sqlite3.Connection, seed: EventSeed) -> bool:
+def insert_event(conn: mysql.connector.connection.MySQLConnection, seed: EventSeed) -> bool:
+    cursor = conn.cursor()
+    
     start_date = date.today() + timedelta(days=seed.start_offset_days)
     end_date = start_date + timedelta(days=max(seed.duration_days - 1, 0))
     date_start = start_date.strftime("%Y-%m-%d")
     date_end = end_date.strftime("%Y-%m-%d") if seed.duration_days > 1 else None
 
-    cur = conn.execute(
-        "SELECT id FROM events WHERE name = ? AND date_start = ?",
+    cursor.execute(
+        "SELECT id FROM events WHERE name = %s AND date_start = %s",
         (seed.name, date_start),
     )
-    if cur.fetchone():
+    if cursor.fetchone():
+        cursor.close()
         return False
 
-    conn.execute(
+    cursor.execute(
         """
         INSERT INTO events (
             name, date_start, date_end, city, level, participants_count,
             style, has_best_trick, source_url, organizer_contact, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             seed.name,
@@ -144,24 +154,26 @@ def insert_event(conn: sqlite3.Connection, seed: EventSeed) -> bool:
             seed.status,
         ),
     )
+    cursor.close()
     return True
 
 
-def seed_events(db_path: Path) -> int:
+def seed_events() -> int:
     inserted = 0
-    with sqlite3.connect(db_path) as conn:
-        conn.execute("PRAGMA foreign_keys = ON;")
+    conn = mysql.connector.connect(**db_config)
+    try:
         for seed in SEEDS:
             if insert_event(conn, seed):
                 inserted += 1
         conn.commit()
+    finally:
+        conn.close()
     return inserted
 
 
 def main() -> None:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    inserted = seed_events(DB_PATH)
-    print(f"Inserted {inserted} events into {DB_PATH}")
+    inserted = seed_events()
+    print(f"Inserted {inserted} events")
 
 
 if __name__ == "__main__":
