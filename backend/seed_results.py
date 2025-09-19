@@ -3,15 +3,22 @@
 
 from __future__ import annotations
 
-import sqlite3
+import os
+import mysql.connector
 from pathlib import Path
 from typing import Iterable
 
 from backend.season import recalculate_season_points
 
-BASE_DIR = Path(__file__).resolve().parent
-ROOT_DIR = BASE_DIR.parent
-DB_PATH = ROOT_DIR / "data" / "top-scoot.sqlite3"
+# Get database connection parameters from environment
+db_config = {
+    'host': os.environ.get("DB_HOST", "scootrate-mariadb-wmclth"),
+    'port': int(os.environ.get("DB_PORT", 3306)),
+    'user': os.environ.get("DB_USER", "scootrate"),
+    'password': os.environ.get("DB_PASSWORD", "secret"),
+    'database': os.environ.get("DB_NAME", "scootrate"),
+    'charset': 'utf8mb4'
+}
 
 POINTS_TABLE = {
     "international": {
@@ -68,16 +75,22 @@ def calculate_points(
     return int(round(total))
 
 
-def fetch_rider_ids(conn: sqlite3.Connection) -> list[int]:
-    cur = conn.execute("SELECT id FROM riders ORDER BY id")
-    return [row[0] for row in cur.fetchall()]
+def fetch_rider_ids(conn: mysql.connector.connection.MySQLConnection) -> list[int]:
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM riders ORDER BY id")
+    result = [row[0] for row in cursor.fetchall()]
+    cursor.close()
+    return result
 
 
-def fetch_events(conn: sqlite3.Connection) -> list[tuple[int, str, int | None]]:
-    cur = conn.execute(
+def fetch_events(conn: mysql.connector.connection.MySQLConnection) -> list[tuple[int, str, int | None]]:
+    cursor = conn.cursor()
+    cursor.execute(
         "SELECT id, level, participants_count FROM events ORDER BY date_start"
     )
-    return [(row[0], row[1], row[2]) for row in cur.fetchall()]
+    result = [(row[0], row[1], row[2]) for row in cursor.fetchall()]
+    cursor.close()
+    return result
 
 
 def chunk(iterable: Iterable[int], size: int) -> list[list[int]]:
@@ -88,10 +101,10 @@ def chunk(iterable: Iterable[int], size: int) -> list[list[int]]:
     return chunks
 
 
-def seed_results(db_path: Path) -> int:
+def seed_results() -> int:
     inserted = 0
-    with sqlite3.connect(db_path) as conn:
-        conn.execute("PRAGMA foreign_keys = ON;")
+    conn = mysql.connector.connect(**db_config)
+    try:
         rider_ids = fetch_rider_ids(conn)
         events = fetch_events(conn)
         if not rider_ids or not events:
@@ -117,11 +130,18 @@ def seed_results(db_path: Path) -> int:
 
                 points = calculate_points(level, place, is_finalist, is_participant, participants_count)
 
-                conn.execute(
+                cursor = conn.cursor()
+                cursor.execute(
                     """
-                    INSERT OR REPLACE INTO results (
+                    INSERT INTO results (
                         event_id, rider_id, place, is_finalist, is_participant, points, comment
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                        place = VALUES(place),
+                        is_finalist = VALUES(is_finalist),
+                        is_participant = VALUES(is_participant),
+                        points = VALUES(points),
+                        comment = VALUES(comment)
                     """,
                     (
                         event_id,
@@ -134,16 +154,19 @@ def seed_results(db_path: Path) -> int:
                     ),
                 )
                 inserted += 1
+                cursor.close()
         conn.commit()
 
+        # Recalculate season points
         recalculate_season_points(conn)
         conn.commit()
+    finally:
+        conn.close()
     return inserted
 
 
 def main() -> None:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    inserted = seed_results(DB_PATH)
+    inserted = seed_results()
     print(f"Inserted/updated {inserted} results and recalculated season points")
 
 
