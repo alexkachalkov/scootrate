@@ -8,7 +8,7 @@ import mysql.connector
 from pathlib import Path
 from typing import Iterable
 
-from backend.season import recalculate_season_points
+from season import recalculate_season_points
 
 # Get database connection parameters from environment
 db_config = {
