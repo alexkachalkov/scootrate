@@ -3,13 +3,20 @@
 
 from __future__ import annotations
 
+import os
 import random
-import sqlite3
+import mysql.connector
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent
-ROOT_DIR = BASE_DIR.parent
-DB_PATH = ROOT_DIR / "data" / "top-scoot.sqlite3"
+# Get database connection parameters from environment
+db_config = {
+    'host': os.environ.get("DB_HOST", "scootrate-mariadb-wmclth"),
+    'port': int(os.environ.get("DB_PORT", 3306)),
+    'user': os.environ.get("DB_USER", "scootrate"),
+    'password': os.environ.get("DB_PASSWORD", "secret"),
+    'database': os.environ.get("DB_NAME", "scootrate"),
+    'charset': 'utf8mb4'
+}
 
 FIRST_NAMES = [
     "Alexei",
@@ -87,18 +94,27 @@ def build_riders() -> list[dict[str, str]]:
     return riders
 
 
-def seed_riders(db_path: Path) -> int:
+def seed_riders() -> int:
     riders = build_riders()
     inserted = 0
 
-    with sqlite3.connect(db_path) as conn:
-        conn.execute("PRAGMA foreign_keys = ON;")
+    conn = mysql.connector.connect(**db_config)
+    try:
+        cursor = conn.cursor()
+        
         for rider in riders:
-            cur = conn.execute(
+            cursor.execute(
+                "SELECT id FROM riders WHERE nickname = %s",
+                (rider["nickname"],)
+            )
+            if cursor.fetchone():
+                continue
+                
+            cursor.execute(
                 """
-                INSERT OR IGNORE INTO riders (
+                INSERT IGNORE INTO riders (
                     nickname, fullname, city, birthdate, style, level, socials_json, email
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     rider["nickname"],
@@ -111,16 +127,20 @@ def seed_riders(db_path: Path) -> int:
                     rider["email"],
                 ),
             )
-            if cur.rowcount:
+            if cursor.rowcount:
                 inserted += 1
+                
         conn.commit()
+        cursor.close()
+    finally:
+        conn.close()
+        
     return inserted
 
 
 def main() -> None:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    inserted = seed_riders(DB_PATH)
-    print(f"Inserted {inserted} riders into {DB_PATH}")
+    inserted = seed_riders()
+    print(f"Inserted {inserted} riders")
 
 
 if __name__ == "__main__":
